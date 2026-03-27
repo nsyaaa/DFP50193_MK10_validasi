@@ -70,7 +70,7 @@
             echo '</ul>';
             echo '</div>';
         } else {
-            echo '<div class="success-message">';
+            echo '<div class="summary-box summary-success">';
             echo '<h2>Application Submitted Successfully!</h2>';
             echo '<p>Thank you, ' . htmlspecialchars($fullName) . '. Your application has been received and is under review.</p>';
             echo '</div>';

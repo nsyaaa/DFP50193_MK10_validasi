@@ -136,7 +136,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <div class="form-buttons">
                 <button type="submit" name="submit" class="btn btn-submit">Submit Application</button>
-                <a href="application.php" class="btn btn-reset" style="text-decoration: none;">Reset Form</a>
+                <a href="application.php" class="btn btn-reset btn-no-decor">Reset Form</a>
             </div>
         </form>
     </div>
