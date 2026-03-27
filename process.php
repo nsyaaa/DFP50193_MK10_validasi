@@ -1,80 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application Status</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Application Status</h1>
-        </header>
-        <?php
-        $errors = [];
+<?php
+session_start();
 
-        // Assigning form inputs to variables
-        $fullName = $_POST['fullName'] ?? '';
-        $studentID = $_POST['studentID'] ?? '';
-        $email = $_POST['email'] ?? '';
-        $loanDuration = $_POST['loanDuration'] ?? '';
-        $loanStartDate = $_POST['loanStartDate'] ?? '';
-        $deviceType = $_POST['deviceType'] ?? '';
-        $webcam = $_POST['webcam'] ?? '';
-        $terms = $_POST['terms'] ?? '';
-        $reason = $_POST['reason'] ?? '';
+// Guard clause using short-circuiting instead of 'if'
+(isset($_POST['submit']) && $_SERVER["REQUEST_METHOD"] === "POST") or die(header("Location: application.php"));
 
-        // Validation for blank inputs
-        if (empty($fullName)) {
-            $errors[] = "Full Name is required.";
-        }
-        if (empty($studentID)) {
-            $errors[] = "Student ID is required.";
-        }
-        if (empty($email)) {
-            $errors[] = "Email is required.";
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "Invalid email format.";
-        }
-        if (empty($loanDuration)) {
-            $errors[] = "Loan Duration is required.";
-        }
-        if (empty($loanStartDate)) {
-            $errors[] = "Loan Start Date is required.";
-        }
-        if (empty($deviceType)) {
-            $errors[] = "Please select a Device Type.";
-        }
-        if (empty($webcam)) {
-            $errors[] = "Please select if you need a webcam.";
-        }
-        if (empty($terms)) {
-            $errors[] = "You must agree to the terms and conditions.";
-        }
-        if (empty($reason)) {
-            $errors[] = "Reason for Application is required.";
-        } elseif (strlen($reason) < 25) {
-            // Validation for the length of the reason
-            $errors[] = "The reason for application must be at least 25 characters long.";
-        }
+// Pastikan semua kunci wujud dan bersihkan input
+$fields = ['fullName', 'studentID', 'email', 'loanDuration', 'loanStartDate', 'deviceType', 'webcam', 'terms', 'reason'];
+$data = array_merge(array_fill_keys($fields, ''), array_map('trim', $_POST));
 
-        // Display errors or success message
-        if (!empty($errors)) {
-            echo '<div class="error-message">';
-            echo '<h2>Please correct the following errors:</h2>';
-            echo '<ul>';
-            foreach ($errors as $error) {
-                echo '<li>' . $error . '</li>';
-            }
-            echo '</ul>';
-            echo '</div>';
-        } else {
-            echo '<div class="summary-box summary-success">';
-            echo '<h2>Application Submitted Successfully!</h2>';
-            echo '<p>Thank you, ' . htmlspecialchars($fullName) . '. Your application has been received and is under review.</p>';
-            echo '</div>';
-        }
-        ?>
-        <a href="application.php" class="back-link">Back to Application Form</a>
-    </div>
+// Pemetaan Label untuk mesej ralat yang spesifik
+$labels = [
+    'fullName'      => 'Nama Penuh',
+    'studentID'     => 'ID Pelajar',
+    'email'         => 'Alamat Emel',
+    'loanDuration'  => 'Tempoh Pinjaman',
+    'loanStartDate' => 'Tarikh Mula Pinjaman',
+    'deviceType'    => 'Jenis Peranti',
+    'webcam'        => 'Keperluan Webcam',
+    'terms'         => 'Persetujuan Terma',
+    'reason'        => 'Sebab Permohonan'
+];
+
+// 1. Sahkan butiran yang kosong (Hanya semak field yang kita mahu)
+$missingFields = array_filter($fields, fn($f) => empty($data[$f]));
+$requiredErrors = array_map(
+    fn($k) => "Butiran '{$labels[$k]}' wajib diisi dan tidak boleh dibiarkan kosong.",
+    $missingFields
+);
+
+// 2. Sahkan format (Hanya jika input tidak kosong)
+$formatRules = [
+    'email'  => [empty($data['email']) || filter_var($data['email'], FILTER_VALIDATE_EMAIL), "Format '{$labels['email']}' tidak sah."],
+    'reason' => [empty($data['reason']) || strlen($data['reason']) >= 25, "Butiran '{$labels['reason']}' mestilah sekurang-kurangnya 25 aksara."]
+];
+$formatErrors = array_values(array_map(fn($r) => $r[1], array_filter($formatRules, fn($r) => !$r[0])));
+
+$errors = array_merge($requiredErrors, $formatErrors);
+
+// Prepare sessions
+$_SESSION['errors'] = $errors;
+$_SESSION['old_input'] = $data;
+
+// If errors exist, target application, otherwise success
+$is_valid = empty($errors);
+$_SESSION['application_details'] = $is_valid ? $data : null;
+
+$target = $is_valid ? "success.php" : "application.php";
+header("Location: $target");
+exit();

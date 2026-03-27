@@ -1,53 +1,24 @@
 <?php
 session_start();
-$errors = [];
-$fullName = $studentID = $email = $loanDuration = $loanStartDate = $deviceType = $webcam = $terms = $reason = '';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $fullName = trim($_POST['fullName'] ?? '');
-    $studentID = trim($_POST['studentID'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $loanDuration = trim($_POST['loanDuration'] ?? '');
-    $loanStartDate = trim($_POST['loanStartDate'] ?? '');
-    $deviceType = $_POST['deviceType'] ?? '';
-    $webcam = $_POST['webcam'] ?? '';
-    $terms = $_POST['terms'] ?? '';
-    $reason = trim($_POST['reason'] ?? '');
+// Ambil ralat dan data lama dari session jika ada
+$errors = $_SESSION['errors'] ?? [];
+$old = $_SESSION['old_input'] ?? [];
 
-    // Validation Logic
+// Set nilai pembolehubah berdasarkan data lama atau kosong
+$fullName = $old['fullName'] ?? '';
+$studentID = $old['studentID'] ?? '';
+$email = $old['email'] ?? '';
+$loanDuration = $old['loanDuration'] ?? '';
+$loanStartDate = $old['loanStartDate'] ?? ''; // Format: YYYY-MM-DD
+$deviceType = $old['deviceType'] ?? '';
+$webcam = $old['webcam'] ?? '';
+$terms = $old['terms'] ?? '';
+$reason = $old['reason'] ?? '';
 
-    if (empty($fullName)) $errors[] = "Full Name is required.";
-    if (empty($studentID)) $errors[] = "Student ID is required.";
-    if (empty($email)) $errors[] = "Email is required.";
-    if (empty($loanDuration)) $errors[] = "Loan Duration is required.";
-    if (empty($loanStartDate)) $errors[] = "Loan Start Date is required.";
-    if (empty($deviceType)) $errors[] = "Please select a Device Type.";
-    if (empty($webcam)) $errors[] = "Please select if you need a webcam.";
-      if (empty($terms)) {
-            $errors[] = "You must agree to the terms.";
-        }
-    
-    if (empty($reason)) {
-        $errors[] = "Reason for Application is required.";
-    } elseif (strlen($reason) < 25) {
-        $errors[] = "The reason must be at least 25 characters long.";
-    }
-
-    if (empty($errors)) {
-        $_SESSION['application_details'] = [
-            'fullName' => $fullName,
-            'studentID' => $studentID,
-            'email' => $email,
-            'loanDuration' => $loanDuration,
-            'loanStartDate' => $loanStartDate,
-            'deviceType' => $deviceType,
-            'webcam' => $webcam,
-            'reason' => $reason
-        ];
-         header("Location: success.php");
-        exit();
-    }
-}
+// Padamkan ralat dan data lama dari session supaya tidak muncul pada 'fresh load'
+unset($_SESSION['errors']);
+unset($_SESSION['old_input']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,18 +36,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <h1>Laptop Loan Scheme Application</h1>
         </header>
 
-        <?php if (!empty($errors)): ?>
-            <div class="error-message">
-                <h2>Please correct the following:</h2>
-                <ul>
-                    <?php foreach ($errors as $error): ?>
-                        <li><?php echo $error; ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
+        <!-- Display errors using ternary and implode -->
+        <?php echo !empty($errors) ? 
+            '<div class="error-message"><h2>Please correct the following:</h2><ul><li>' . 
+            implode('</li><li>', array_map('htmlspecialchars', $errors)) . 
+            '</li></ul></div>' : ''; 
+        ?>
 
-        <form action="application.php" method="post" class="application-form">
+        <form action="process.php" method="post" class="application-form">
             <div class="form-group">
                 <label class="form-label">Full Name:</label>
                 <input type="text" name="fullName" class="form-control" value="<?php echo htmlspecialchars($fullName); ?>">
@@ -99,39 +66,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <div class="form-group">
                 <label class="form-label">Loan Start Date:</label>
-                <?php
-                $displayLoanStartDate = '';
-                if (!empty($loanStartDate)) {
-                    // The input's value should be YYYY-MM-DD for Flatpickr's internal handling
-                    // and for server-side processing. Flatpickr will display DD/MM/YYYY to the user.
-                    $displayLoanStartDate = $loanStartDate;
-                } ?>
-                <input type="text" name="loanStartDate" id="loanStartDate" class="form-control" value="<?php echo htmlspecialchars($displayLoanStartDate); ?>">
+                <input type="text" name="loanStartDate" id="loanStartDate" class="form-control" value="<?php echo htmlspecialchars($loanStartDate); ?>">
             </div>
 
             <div class="form-group">
                 <label class="form-label">Preferred Device:</label>
                 <select name="deviceType" class="form-control">
                     <option value="">--Select--</option>
-                    <option value="Laptop" <?php if($deviceType=='Laptop') echo 'selected'; ?>>Laptop</option>
-                    <option value="Tablet" <?php if($deviceType=='Tablet') echo 'selected'; ?>>Tablet</option>
+                    <option value="Laptop" <?php echo ($deviceType == 'Laptop') ? 'selected' : ''; ?>>Laptop</option>
+                    <option value="Tablet" <?php echo ($deviceType == 'Tablet') ? 'selected' : ''; ?>>Tablet</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <p class="form-label">Need a webcam?</p>
-                <input type="radio" name="webcam" class="form-radio" value="Yes" <?php if($webcam=='Yes') echo 'checked'; ?>> Yes
-                <input type="radio" name="webcam" class="form-radio" value="No" <?php if($webcam=='No') echo 'checked'; ?>> No
+                <input type="radio" name="webcam" class="form-radio" value="Yes" <?php echo ($webcam == 'Yes') ? 'checked' : ''; ?>> Yes
+                <input type="radio" name="webcam" class="form-radio" value="No" <?php echo ($webcam == 'No') ? 'checked' : ''; ?>> No
             </div>
 
             <div class="form-group">
-                <input type="checkbox" name="terms" class="form-check" id="terms" value="agreed" <?php if($terms=='agreed') echo 'checked'; ?>>
+                <input type="checkbox" name="terms" class="form-check" id="terms" value="agreed" <?php echo ($terms === 'agreed') ? 'checked' : ''; ?>>
                 <label>I agree to the terms and conditions</label>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Reason (min. 25 chars):</label>
-                <textarea name="reason" rows="4" class="form-control"><?php echo htmlspecialchars($reason); ?></textarea>
+                <textarea name="reason" rows="4" class="form-control" placeholder="Explain why you need this equipment..."><?php echo htmlspecialchars($reason); ?></textarea>
             </div>
 
             <div class="form-buttons">
@@ -150,9 +110,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             altInput: true,      // Enable an alternate input for display
             altFormat: "d/m/Y",  // The format for the displayed input (user sees this)
             // Optional: Set default date if $loanStartDate is present from PHP
-            <?php if (!empty($loanStartDate)): ?>
-            defaultDate: "<?php echo htmlspecialchars($loanStartDate); ?>",
-            <?php endif; ?>
+            <?php echo !empty($loanStartDate) ? 
+                "defaultDate: '" . htmlspecialchars($loanStartDate) . "'," : ""; ?>
         });
     });
 </script>
